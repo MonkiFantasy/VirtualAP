@@ -58,8 +58,8 @@ object APManager {
         onLine: (Int, String) -> Unit
     ): Boolean = withContext(Dispatchers.IO) {
         val sq = { s: String -> "'" + s.replace("'", "'\\''") + "'" }
-        var cmd = "${Constants.START_AP} start -s ${sq(ssid)} -p ${sq(password)} -o ${sq(upstream)} -b ${sq(band)}"
-        if (!channel.isNullOrBlank()) cmd += " -c ${sq(channel)}"
+        val channelVal = channel ?: ""
+        val cmd = "${Constants.START_AP} start -s ${sq(ssid)} -p ${sq(password)} -o ${sq(upstream)} -b ${sq(band)} -c ${sq(channelVal)}"
 
         val outputList = object : com.topjohnwu.superuser.CallbackList<String>() {
             override fun onAddElement(e: String?) {

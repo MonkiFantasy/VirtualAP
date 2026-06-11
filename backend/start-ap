@@ -434,6 +434,29 @@ cmd_start() {
 
     check_prerequisites || exit 1
 
+    # Validate channel compatibility with selected band
+    if [ -n "$CHANNEL" ]; then
+        case "$CHANNEL" in
+            *[!0-9]*)
+                warn "Channel '$CHANNEL' is not a valid number. Resetting to auto."
+                CHANNEL=""
+                ;;
+            *)
+                if [ "$BAND" = "5" ]; then
+                    if [ "$CHANNEL" -lt 36 ]; then
+                        warn "Channel $CHANNEL is invalid for 5GHz band. Resetting to auto."
+                        CHANNEL=""
+                    fi
+                else
+                    if [ "$CHANNEL" -lt 1 ] || [ "$CHANNEL" -gt 14 ]; then
+                        warn "Channel $CHANNEL is invalid for 2.4GHz band. Resetting to auto."
+                        CHANNEL=""
+                    fi
+                fi
+                ;;
+        esac
+    fi
+
     # Persist settings now, before pick_channel mutates BAND/CHANNEL and
     # before anything can fail - a failed attempt must not lose the config.
     save_conf
