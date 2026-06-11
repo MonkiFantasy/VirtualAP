@@ -713,38 +713,14 @@ private fun ActionLogsSheet(
                 }
             }
 
-            // Terminal console — empty state shows dim placeholder
-            if (logs.isEmpty()) {
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 88.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
-                    tonalElevation = 0.dp
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(20.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "No log output yet.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.32f)
-                        )
-                    }
-                }
-            } else {
-                TerminalConsole(
-                    logs = logs,
-                    isProcessing = isProcessing,
-                    modifier = Modifier.fillMaxWidth(),
-                    maxHeight = 460.dp
-                )
-            }
+            // Terminal console — fills remaining space
+            TerminalConsole(
+                logs = if (logs.isEmpty()) listOf(android.util.Log.INFO to "No log output yet.")
+                       else logs,
+                isProcessing = isProcessing,
+                modifier = Modifier.fillMaxWidth(),
+                maxHeight = 460.dp
+            )
         }
     }
 }
