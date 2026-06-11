@@ -4,37 +4,13 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-
-    <!-- Outer wifi arc -->
-    <path
-        android:pathData="M54,30
-            C70,30 84,40 90,54
-            C84,54 79,49 54,49
-            C29,49 24,54 18,54
-            C24,40 38,30 54,30Z"
-        android:fillColor="#4CC2FF"
-        android:fillAlpha="0.9"/>
-
-    <!-- Middle wifi arc -->
-    <path
-        android:pathData="M54,44
-            C63,44 71,48 76,54
-            C71,54 65,51 54,51
-            C43,51 37,54 32,54
-            C37,48 45,44 54,44Z"
-        android:fillColor="#4CC2FF"/>
-
-    <!-- Inner wifi arc -->
-    <path
-        android:pathData="M54,58
-            C58,58 62,60 64,63
-            C62,63 58,62 54,62
-            C50,62 46,63 44,63
-            C46,60 50,58 54,58Z"
-        android:fillColor="#4CC2FF"/>
-
-    <!-- Dot -->
-    <path
-        android:pathData="M54,67 A5,5 0 1 0 54,77 A5,5 0 1 0 54,67 Z"
-        android:fillColor="#4CC2FF"/>
+    <group
+        android:scaleX="0.2039"
+        android:scaleY="0.2039"
+        android:translateX="30.0"
+        android:translateY="30.0">
+        <path
+            android:pathData="M235.383 111.604H0v91.087h235.383V111.604zM125.649 175.904h-15.916v-37.512h15.916V175.904zM164.52 175.904h-15.915v-37.512h15.915V175.904zM203.391 175.904h-15.915v-37.512h15.915V175.904zM117.691 67.783c16.371 0 31.761 6.375 43.337 17.95l-14.143 14.143c-7.798 -7.798 -18.166 -12.093 -29.194 -12.093s-21.396 4.295 -29.194 12.093L74.354 85.733C85.93 74.158 101.321 67.783 117.691 67.783zM171.7 75.063c-14.425 -14.427 -33.606 -22.371 -54.009 -22.371c-20.402 0 -39.583 7.944 -54.008 22.371L49.541 60.92c18.203 -18.203 42.406 -28.229 68.15 -28.229c25.746 0 49.949 10.025 68.151 28.229L171.7 75.063z"
+            android:fillColor="#000000" />
+    </group>
 </vector>
