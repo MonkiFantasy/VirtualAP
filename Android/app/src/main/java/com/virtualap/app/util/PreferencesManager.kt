@@ -75,6 +75,10 @@ class PreferencesManager private constructor(context: Context) {
         get() = prefs.getString(Constants.KEY_AP_UPSTREAM, "auto") ?: "auto"
         set(value) { prefs.edit().putString(Constants.KEY_AP_UPSTREAM, value).apply() }
 
+    var hasSeenRootCheck: Boolean
+        get() = prefs.getBoolean(Constants.KEY_HAS_SEEN_ROOT_CHECK, false)
+        set(value) { prefs.edit().putBoolean(Constants.KEY_HAS_SEEN_ROOT_CHECK, value).apply() }
+
     companion object {
         @Volatile
         private var INSTANCE: PreferencesManager? = null

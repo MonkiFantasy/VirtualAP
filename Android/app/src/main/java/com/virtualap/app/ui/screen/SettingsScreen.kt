@@ -1,6 +1,11 @@
 package com.virtualap.app.ui.screen
 
 import android.os.Build
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -58,43 +63,58 @@ fun SettingsScreen(
                         checked = appVm.followSystemTheme,
                         onCheckedChange = { appVm.setFollowSystemTheme(it) }
                     )
-                    HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
-                    SwitchItem(
-                        label = "Dark mode",
-                        subtitle = "Force dark theme regardless of system setting",
-                        icon = Icons.Default.DarkMode,
-                        checked = appVm.darkThemeEnabled,
-                        onCheckedChange = { appVm.setDarkTheme(it) },
-                        enabled = !appVm.followSystemTheme
-                    )
-                    HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
-                    SwitchItem(
-                        label = "AMOLED mode",
-                        subtitle = "Pure black backgrounds to save battery on OLED screens",
-                        icon = Icons.Default.PhoneAndroid,
-                        checked = appVm.amoledMode,
-                        onCheckedChange = { appVm.setAmoledMode(it) }
-                    )
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
-                        SwitchItem(
-                            label = "Dynamic color",
-                            subtitle = "Derive colors from your wallpaper (Material You)",
-                            icon = Icons.Default.Palette,
-                            checked = appVm.dynamicColor,
-                            onCheckedChange = { appVm.setDynamicColor(it) }
-                        )
+                    AnimatedVisibility(
+                        visible = !appVm.followSystemTheme,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically()
+                    ) {
+                        Column {
+                            HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+                            SwitchItem(
+                                label = "Dark mode",
+                                subtitle = "Force dark theme regardless of system setting",
+                                icon = Icons.Default.DarkMode,
+                                checked = appVm.darkThemeEnabled,
+                                onCheckedChange = { appVm.setDarkTheme(it) }
+                            )
+                            HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+                            SwitchItem(
+                                label = "AMOLED mode",
+                                subtitle = "Pure black backgrounds to save battery on OLED screens",
+                                icon = Icons.Default.PhoneAndroid,
+                                checked = appVm.amoledMode,
+                                onCheckedChange = { appVm.setAmoledMode(it) }
+                            )
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+                                SwitchItem(
+                                    label = "Dynamic color",
+                                    subtitle = "Derive colors from your wallpaper (Material You)",
+                                    icon = Icons.Default.Palette,
+                                    checked = appVm.dynamicColor,
+                                    onCheckedChange = { appVm.setDynamicColor(it) }
+                                )
+                            }
+                        }
                     }
                 }
             }
 
-            if (!appVm.dynamicColor || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
-                item { SettingsSectionHeader("Color palette") }
-                item {
-                    PalettePicker(
-                        selected = appVm.themePalette,
-                        onSelect = { appVm.setThemePalette(it) }
-                    )
+            val showPalette = !appVm.followSystemTheme &&
+                (!appVm.dynamicColor || Build.VERSION.SDK_INT < Build.VERSION_CODES.S)
+            item {
+                AnimatedVisibility(
+                    visible = showPalette,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically()
+                ) {
+                    Column(verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp)) {
+                        SettingsSectionHeader("Color palette")
+                        PalettePicker(
+                            selected = appVm.themePalette,
+                            onSelect = { appVm.setThemePalette(it) }
+                        )
+                    }
                 }
             }
         }

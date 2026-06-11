@@ -28,18 +28,22 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     var installStatus by mutableStateOf(InstallStatus.Checking)
         private set
 
-    // Private mutable backing state — read via computed val below to avoid
-    // JVM setter name clash with the explicit set* functions.
+    // Set to true when a background root check fails after the user has already
+    // passed the root check screen. Drives the revoked-root overlay in MainActivity.
+    var rootRevokedInBackground by mutableStateOf(false)
+        private set
+
+    // Private mutable backing state — read via computed val to avoid JVM setter clash.
     private var _followSystemTheme by mutableStateOf(prefs.followSystemTheme)
     private var _darkThemeEnabled  by mutableStateOf(prefs.darkTheme)
     private var _dynamicColor      by mutableStateOf(prefs.useDynamicColor)
     private var _amoledMode        by mutableStateOf(prefs.amoledMode)
     private var _themePalette      by mutableStateOf(ThemePalette.fromName(prefs.themePalette))
 
-    val followSystemTheme: Boolean get() = _followSystemTheme
-    val darkThemeEnabled:  Boolean get() = _darkThemeEnabled
-    val dynamicColor:      Boolean get() = _dynamicColor
-    val amoledMode:        Boolean get() = _amoledMode
+    val followSystemTheme: Boolean    get() = _followSystemTheme
+    val darkThemeEnabled:  Boolean    get() = _darkThemeEnabled
+    val dynamicColor:      Boolean    get() = _dynamicColor
+    val amoledMode:        Boolean    get() = _amoledMode
     val themePalette:      ThemePalette get() = _themePalette
 
     fun setFollowSystemTheme(v: Boolean) { _followSystemTheme = v; prefs.followSystemTheme = v }
@@ -49,18 +53,58 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun setThemePalette(p: ThemePalette) { _themePalette      = p; prefs.themePalette = p.name }
 
     init {
-        if (prefs.rootAvailable) {
-            checkInstalled()
-        } else {
-            checkRoot()
+        when {
+            !prefs.hasSeenRootCheck -> {
+                // First launch — stay on RootCheckScreen; user taps to prompt SU manager
+            }
+            prefs.rootAvailable -> {
+                // Returning user with known-good root: skip the check screen entirely,
+                // go straight to main/setup, and verify root silently in background.
+                checkInstalled()
+                checkRootSilently()
+            }
+            else -> {
+                // Root was previously denied — show the check screen again (Denied state)
+                rootStatus = RootStatus.Denied
+            }
         }
     }
 
+    /** Called from the "Grant Root Access" button on RootCheckScreen. */
     fun checkRoot() {
         viewModelScope.launch {
-            rootStatus = RootChecker.checkRootAccess()
-            prefs.rootAvailable = rootStatus == RootStatus.Granted
-            if (rootStatus == RootStatus.Granted) checkInstalled()
+            rootStatus = RootStatus.Checking
+            val status = withContext(Dispatchers.IO) { RootChecker.checkRootAccess() }
+            rootStatus = status
+            prefs.rootAvailable = status == RootStatus.Granted
+            prefs.hasSeenRootCheck = true
+            if (status == RootStatus.Granted) checkInstalled()
+        }
+    }
+
+    /** Silent background re-verification for returning users. No UI unless it fails. */
+    private fun checkRootSilently() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val status = RootChecker.checkRootAccess()
+            if (status != RootStatus.Granted) {
+                prefs.rootAvailable = false
+                withContext(Dispatchers.Main) {
+                    rootStatus = RootStatus.Denied
+                    rootRevokedInBackground = true
+                }
+            }
+        }
+    }
+
+    /** Called from the "Retry" button in the revoked-root overlay. */
+    fun retryRootAfterRevoke() {
+        rootRevokedInBackground = false
+        viewModelScope.launch {
+            rootStatus = RootStatus.Checking
+            val status = withContext(Dispatchers.IO) { RootChecker.checkRootAccess() }
+            rootStatus = status
+            prefs.rootAvailable = status == RootStatus.Granted
+            if (status != RootStatus.Granted) rootRevokedInBackground = true
         }
     }
 
