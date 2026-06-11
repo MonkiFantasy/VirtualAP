@@ -34,9 +34,7 @@
         android:fillColor="#4CC2FF"/>
 
     <!-- Dot -->
-    <circle
-        android:cx="54"
-        android:cy="72"
-        android:r="5"
+    <path
+        android:pathData="M54,67 A5,5 0 1 0 54,77 A5,5 0 1 0 54,67 Z"
         android:fillColor="#4CC2FF"/>
 </vector>

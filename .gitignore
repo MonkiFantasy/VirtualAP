@@ -3,3 +3,5 @@ backend/bin/busybox
 .DS_Store
 Android/.gradle/
 Android/app/build/
+Android/app/src/main/assets/
+ci-debug.keystore

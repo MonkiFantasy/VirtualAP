@@ -79,7 +79,7 @@ android {
                             "-keyalg", "RSA",
                             "-keysize", "2048",
                             "-validity", "10000",
-                            "-storetype", "JKS",
+                            "-storetype", "PKCS12",
                             "-storepass", "android",
                             "-keypass", "android",
                             "-dname", "CN=VirtualAP, OU=Mobile, O=Anonymized, L=Earth, ST=Galaxy, C=UN",
@@ -150,27 +150,6 @@ android {
 }
 
 // ---------------------------------------------------------------------------
-// prepareFonts: copies JetBrains Mono TTF files from sibling Droidspaces-OSS
-// project. Skips gracefully if source directory does not exist.
-// ---------------------------------------------------------------------------
-tasks.register("prepareFonts") {
-    doLast {
-        val srcFontDir = file("../../../Droidspaces-OSS/Android/app/src/main/res/font")
-        if (!srcFontDir.exists()) {
-            println("prepareFonts: Droidspaces-OSS font directory not found, skipping.")
-            return@doLast
-        }
-        val destFontDir = file("src/main/res/font")
-        destFontDir.mkdirs()
-        srcFontDir.listFiles()?.filter { it.extension == "ttf" || it.extension == "xml" }?.forEach { src ->
-            val dest = File(destFontDir, src.name)
-            src.copyTo(dest, overwrite = true)
-            println("prepareFonts: copied ${src.name}")
-        }
-    }
-}
-
-// ---------------------------------------------------------------------------
 // prepareAssets: copies tools and rootfs tarball into assets directory.
 // Skips gracefully if source files don't exist.
 // ---------------------------------------------------------------------------
@@ -232,7 +211,6 @@ tasks.register("prepareAssets") {
 
 tasks.configureEach {
     if (name.startsWith("pre") && name.endsWith("Build")) {
-        dependsOn("prepareFonts")
         dependsOn("prepareAssets")
     }
 }
