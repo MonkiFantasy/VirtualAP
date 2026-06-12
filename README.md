@@ -7,12 +7,19 @@ VirtualAP is a software utility designed to configure a virtual access point on 
 
 ## Navigation
 
+* [System Requirements](#system-requirements)
 * [Features](#features)
 * [Repository Layout](#repository-layout)
 * [Build Instructions](#build-instructions)
 * [Android Application Lifecycle](#android-application-lifecycle)
 * [Routing and Architecture](#routing-and-architecture)
 * [License](#license)
+
+## System Requirements
+
+* **Root Access**: Root permissions are required to perform network routing operations, control iptables, and manage virtual interfaces.
+* **Architecture**: Aarch64 (ARM64-v8a) CPU architecture.
+* **Android Version**: Android 8.0 (SDK 26) or higher.
 
 ## Features
 
