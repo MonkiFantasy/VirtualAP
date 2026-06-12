@@ -88,7 +88,14 @@ class APViewModel(application: Application) : AndroidViewModel(application) {
 
     fun loadInterfaces() {
         viewModelScope.launch {
-            interfaces = APManager.getInterfaces()
+            val ifaces = APManager.getInterfaces()
+            interfaces = ifaces
+            // If the saved upstream is gone (e.g. WireGuard tunnel stopped), reset to auto.
+            // Without this, the dropdown label falls back to "Auto (recommended)" visually
+            // but config.upstream stays as the old iface name and gets sent to the backend.
+            if (config.upstream != "auto" && ifaces.none { it.name == config.upstream }) {
+                config = config.copy(upstream = "auto")
+            }
         }
     }
 
