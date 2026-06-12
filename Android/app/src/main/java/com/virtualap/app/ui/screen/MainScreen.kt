@@ -40,6 +40,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import com.virtualap.app.R
 import com.virtualap.app.ui.component.SwitchItem
 import com.virtualap.app.ui.component.TerminalConsole
@@ -375,7 +376,7 @@ fun MainScreen(
                                     onValueChange = {},
                                     readOnly = true,
                                     label = { Text(stringResource(R.string.container_label)) },
-                                    leadingIcon = { Icon(Icons.Default.Dns, contentDescription = null) },
+                                    leadingIcon = { Icon(ImageVector.vectorResource(R.drawable.ic_droidspaces), contentDescription = null) },
                                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = containerExpanded) },
                                     modifier = Modifier.fillMaxWidth().menuAnchor(),
                                     enabled = !status.running
