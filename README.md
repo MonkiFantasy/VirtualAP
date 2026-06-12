@@ -4,17 +4,17 @@ Turn your phone's WiFi chip into a **real router**.
 
 VirtualAP creates a virtual access point (`ap0`) directly on the phone's WiFi hardware with:
 
-- **Static gateway IP** (`192.168.42.1`) — unlike Android's built-in hotspot, the gateway
+- **Static gateway IP** (`192.168.42.1`) - unlike Android's built-in hotspot, the gateway
   address never changes. Port forwards, bookmarks, and SSH configs stay valid forever.
-- **Selectable upstream** — Mobile Data, WiFi, Ethernet… or `wg0`: start a tunnel in the
+- **Selectable upstream** - Mobile Data, WiFi, Ethernet… or `wg0`: start a tunnel in the
   official WireGuard app (kernel backend), pick `wg0` as upstream, and every connected
   client is tunneled automatically.
-- **Auto upstream detection** — reads netd's default-network routing rule (the kernel's
+- **Auto upstream detection** - reads netd's default-network routing rule (the kernel's
   ground truth for "which network has internet").
 - **DHCP + DNS** for clients via dnsmasq.
-- **5GHz channel-following** — the AP follows the STA's current channel (same-channel
+- **5GHz channel-following** - the AP follows the STA's current channel (same-channel
   concurrency), the root cause of why 5GHz "randomly failed" in older implementations.
-- **4.4MB Alpine rootfs** — carries only `hostapd`, `dnsmasq`, and `iw` (many phones ship
+- **4.4MB Alpine rootfs** - carries only `hostapd`, `dnsmasq`, and `iw` (many phones ship
   no `iw` binary); routing and firewall use Android's own `ip`/`iptables`.
 
 ## Repo layout
@@ -44,20 +44,8 @@ into the APK assets before each build.
 
 On first launch the app checks root access, then installs the backend to
 `/data/local/virtualap/` via root shell (extracts the bundled Alpine rootfs, deploys the
-shell scripts, sets permissions). After that it works entirely standalone — no module to
+shell scripts, sets permissions). After that it works entirely standalone - no module to
 flash, no reboot required.
-
-## CLI
-
-The backend can also be driven directly from a root shell:
-
-```bash
-/data/local/virtualap/start-ap start -s "My AP" -p "password123"
-/data/local/virtualap/start-ap start -s "My AP" -p "password123" -o wg0   # WireGuard
-/data/local/virtualap/start-ap start -s "My AP" -p "password123" -b 5     # 5 GHz
-/data/local/virtualap/start-ap status
-/data/local/virtualap/start-ap stop
-```
 
 ## How it routes
 
@@ -70,9 +58,9 @@ replies → ip rule pref 7000: to 192.168.42.0/24 lookup main → ap0
 ```
 
 Pinned rule priorities sit above netd's entire range (10000+), so VPN catch-all rules can
-never hijack AP client traffic — and above Android's `32000: from all unreachable` guard
+never hijack AP client traffic - and above Android's `32000: from all unreachable` guard
 that silently killed unpinned rules in older implementations.
 
 ## License
 
-MIT — Copyright (c) 2026 ravindu644
+MIT - Copyright (c) 2026 ravindu644
