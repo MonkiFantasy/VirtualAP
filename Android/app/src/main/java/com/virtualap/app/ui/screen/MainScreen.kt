@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -36,10 +37,23 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.ui.res.stringResource
 import com.virtualap.app.R
+import com.virtualap.app.ui.component.SwitchItem
 import com.virtualap.app.ui.component.TerminalConsole
 import com.virtualap.app.ui.viewmodel.APConfig
 import com.virtualap.app.ui.viewmodel.APViewModel
 import com.virtualap.app.util.AnsiColorParser
+
+private val ipv4Regex = Regex(
+    "^(25[0-5]|2[0-4]\\d|[01]?\\d\\d?)" +
+    "\\.(25[0-5]|2[0-4]\\d|[01]?\\d\\d?)" +
+    "\\.(25[0-5]|2[0-4]\\d|[01]?\\d\\d?)" +
+    "\\.(25[0-4]|2[0-4]\\d|[01]?\\d[1-9]|[01]?[1-9]\\d?|[1-9])$"
+)
+private fun isValidIpv4(ip: String): Boolean = ipv4Regex.matches(ip.trim())
+private fun isValidDnsServers(dns: String): Boolean {
+    if (dns.isBlank()) return true
+    return dns.split(",").all { isValidIpv4(it.trim()) }
+}
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -310,87 +324,184 @@ fun MainScreen(
                                 Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.refresh_interfaces_desc))
                             }
                         }
+                    }
+                }
+            }
 
-                        Spacer(Modifier.height(16.dp))
+            // --- 3. ADVANCED CARD ---
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            stringResource(R.string.advanced_settings_title),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Spacer(Modifier.height(12.dp))
 
-                        // Start / Stop button
-                        val isLoading = vm.isStarting || vm.isStopping
-                        Button(
-                            onClick = { if (status.running) vm.stop() else vm.start() },
-                            modifier = Modifier.fillMaxWidth().height(52.dp),
-                            enabled = !isLoading && (status.running || (vm.config.ssid.isNotBlank() && vm.config.password.length >= 8)),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (status.running)
-                                    MaterialTheme.colorScheme.error
+                        // Gateway IP
+                        var gatewayText by remember(vm.config.gateway) { mutableStateOf(vm.config.gateway) }
+                        val gatewayError = gatewayText.isNotBlank() && !isValidIpv4(gatewayText)
+                        OutlinedTextField(
+                            value = gatewayText,
+                            onValueChange = { v ->
+                                gatewayText = v
+                                if (isValidIpv4(v)) vm.config = vm.config.copy(gateway = v.trim())
+                            },
+                            label = { Text(stringResource(R.string.gateway_ip_label)) },
+                            placeholder = { Text(stringResource(R.string.gateway_ip_placeholder)) },
+                            supportingText = {
+                                if (gatewayError)
+                                    Text(stringResource(R.string.gateway_ip_error), color = MaterialTheme.colorScheme.error)
                                 else
-                                    MaterialTheme.colorScheme.primary
-                            )
-                        ) {
-                            AnimatedContent(
-                                targetState = isLoading to status.running,
-                                transitionSpec = { fadeIn() togetherWith fadeOut() },
-                                label = "startStopContent"
-                            ) { (loading, running) ->
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Center,
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    if (loading) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(20.dp),
-                                            strokeWidth = 2.dp,
-                                            color = MaterialTheme.colorScheme.onPrimary
-                                        )
-                                        Spacer(Modifier.width(8.dp))
-                                        Text(
-                                            if (vm.isStarting) stringResource(R.string.starting) else stringResource(R.string.stopping),
-                                            style = MaterialTheme.typography.labelLarge
-                                        )
-                                    } else {
-                                        Icon(
-                                            if (running) Icons.Default.WifiOff else Icons.Default.Wifi,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                        Spacer(Modifier.width(8.dp))
-                                        Text(
-                                            if (running) stringResource(R.string.stop_ap) else stringResource(R.string.start_ap),
-                                            style = MaterialTheme.typography.labelLarge,
-                                            fontWeight = FontWeight.SemiBold
-                                        )
-                                    }
+                                    Text(stringResource(R.string.gateway_ip_desc), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            },
+                            isError = gatewayError,
+                            leadingIcon = { Icon(Icons.Default.Router, contentDescription = null) },
+                            trailingIcon = {
+                                if (gatewayError)
+                                    Icon(Icons.Default.Error, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                            },
+                            singleLine = true,
+                            enabled = !status.running,
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Number,
+                                imeAction = ImeAction.Next
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(Modifier.height(8.dp))
+
+                        // DNS Servers
+                        var dnsText by remember(vm.config.dnsServers) { mutableStateOf(vm.config.dnsServers) }
+                        val dnsError = !isValidDnsServers(dnsText)
+                        OutlinedTextField(
+                            value = dnsText,
+                            onValueChange = { v ->
+                                dnsText = v
+                                if (isValidDnsServers(v)) vm.config = vm.config.copy(dnsServers = v.trim())
+                            },
+                            label = { Text(stringResource(R.string.dns_servers_label)) },
+                            placeholder = { Text(stringResource(R.string.dns_servers_placeholder)) },
+                            supportingText = {
+                                if (dnsError)
+                                    Text(stringResource(R.string.dns_servers_error), color = MaterialTheme.colorScheme.error)
+                                else
+                                    Text(stringResource(R.string.dns_servers_desc), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            },
+                            isError = dnsError,
+                            leadingIcon = { Icon(Icons.Default.Dns, contentDescription = null) },
+                            trailingIcon = {
+                                if (dnsError)
+                                    Icon(Icons.Default.Error, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                                else if (dnsText.isNotBlank() && !dnsError)
+                                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            },
+                            singleLine = true,
+                            enabled = !status.running,
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Ascii,
+                                imeAction = ImeAction.Done
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        // Hide SSID
+                        SwitchItem(
+                            label = stringResource(R.string.hidden_ssid_label),
+                            subtitle = stringResource(R.string.hidden_ssid_desc),
+                            icon = Icons.Default.VisibilityOff,
+                            checked = vm.config.hidden,
+                            onCheckedChange = { vm.config = vm.config.copy(hidden = it) },
+                            enabled = !status.running
+                        )
+                    }
+                }
+            }
+
+            // --- 4. ACTION BUTTONS (outside the cards) ---
+            item {
+                Column {
+                    // Start / Stop button
+                    val isLoading = vm.isStarting || vm.isStopping
+                    Button(
+                        onClick = { if (status.running) vm.stop() else vm.start() },
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                        enabled = !isLoading && (status.running || (vm.config.ssid.isNotBlank() && vm.config.password.length >= 8)),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (status.running)
+                                MaterialTheme.colorScheme.error
+                            else
+                                MaterialTheme.colorScheme.primary
+                        )
+                    ) {
+                        AnimatedContent(
+                            targetState = isLoading to status.running,
+                            transitionSpec = { fadeIn() togetherWith fadeOut() },
+                            label = "startStopContent"
+                        ) { (loading, running) ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                if (loading) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(20.dp),
+                                        strokeWidth = 2.dp,
+                                        color = MaterialTheme.colorScheme.onPrimary
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(
+                                        if (vm.isStarting) stringResource(R.string.starting) else stringResource(R.string.stopping),
+                                        style = MaterialTheme.typography.labelLarge
+                                    )
+                                } else {
+                                    Icon(
+                                        if (running) Icons.Default.WifiOff else Icons.Default.Wifi,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(
+                                        if (running) stringResource(R.string.stop_ap) else stringResource(R.string.start_ap),
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
                                 }
                             }
                         }
+                    }
 
-                        // View Logs button — always visible
-                        Spacer(Modifier.height(8.dp))
-                        OutlinedButton(
-                            onClick = { vm.openLogSheet() },
+                    // View Logs button — always visible
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = { vm.openLogSheet() },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            Icons.Default.Terminal,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            stringResource(R.string.view_logs),
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    }
+
+                    if (vm.config.ssid.isBlank() && !status.running) {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            stringResource(R.string.enter_ssid_prompt),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(
-                                Icons.Default.Terminal,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                stringResource(R.string.view_logs),
-                                style = MaterialTheme.typography.labelLarge
-                            )
-                        }
-
-                        if (vm.config.ssid.isBlank() && !status.running) {
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                stringResource(R.string.enter_ssid_prompt),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
+                        )
                     }
                 }
             }

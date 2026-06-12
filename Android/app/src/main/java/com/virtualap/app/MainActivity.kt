@@ -101,7 +101,6 @@ class MainActivity : ComponentActivity() {
                         composable(Screens.SETTINGS) {
                             SettingsScreen(
                                 appVm = appVm,
-                                apVm = apVm,
                                 onBack = { navController.popBackStack() }
                             )
                         }
