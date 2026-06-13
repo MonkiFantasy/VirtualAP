@@ -291,6 +291,13 @@ pick_channel() {
             CHANNEL="${CHANNEL:-6}"
         fi
     fi
+
+    # Sync BAND from the final channel so hw_mode is always correct.
+    if [ "$CHANNEL" -ge 36 ] 2>/dev/null; then
+        BAND="5"
+    else
+        BAND="2"
+    fi
 }
 
 # --- Subnet helper ---
@@ -466,8 +473,8 @@ ssid=$SSID
 hw_mode=$hw_mode
 channel=$CHANNEL
 $extra
-${country:+country_code=$country}
-${country:+ieee80211d=1}
+country_code=US
+ieee80211d=1
 wpa=2
 wpa_passphrase=$PASSWORD
 wpa_key_mgmt=WPA-PSK
