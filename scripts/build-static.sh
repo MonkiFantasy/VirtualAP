@@ -37,9 +37,18 @@ fi
 for pair in $ARCHES; do
     label="${pair%%:*}"; platform="${pair##*:}"
     echo "[*] Building $label ($platform) in $IMAGE ..."
-    # :z relabels the bind mount for SELinux (Fedora/RHEL hosts). externals/ is
-    # mounted read-only; the container copies sources out before building.
+    # Pull the image for THIS platform right before running. alpine:3.23 is a
+    # single local tag, so the earlier binfmt check (which pulled both arches)
+    # leaves it pointing at whichever it pulled last - `docker run --platform`
+    # then silently reuses that wrong-arch image. Re-pulling per iteration keeps
+    # the local tag in sync with $platform.
+    docker pull --quiet --platform "$platform" "$IMAGE" >/dev/null
+    # ARCH_LABEL is passed explicitly so the container never has to guess its arch
+    # from `uname -m` (unreliable under emulation). :z relabels the bind mount for
+    # SELinux (Fedora/RHEL); externals/ is mounted read-only and copied out before
+    # building.
     docker run --rm --platform "$platform" \
+        -e ARCH_LABEL="$label" \
         -v "$HERE":/work:z \
         -v "$REPO/externals":/externals:ro,z \
         "$IMAGE" sh /work/build-in-container.sh

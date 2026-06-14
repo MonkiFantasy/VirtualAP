@@ -14,14 +14,26 @@
 # Output -> /work/out, build scratch -> /work/.src-cache
 set -e
 
-# Derive the arch label from the (emulated) container arch. build-static.sh runs
-# this once per --platform; output is kept in a per-arch subdir.
-case "$(uname -m)" in
-    aarch64)                 ARCH_LABEL=aarch64 ;;
-    armv7l|armv7|armhf|arm)  ARCH_LABEL=armhf ;;
-    *) echo "unsupported build arch: $(uname -m)"; exit 1 ;;
+# Arch label drives the per-arch output subdir. build-static.sh passes it via
+# $ARCH_LABEL (authoritative - it knows the requested --platform). Fall back to
+# `uname -m` only for standalone/manual runs; uname is unreliable under emulation.
+if [ -z "${ARCH_LABEL:-}" ]; then
+    case "$(uname -m)" in
+        aarch64)                 ARCH_LABEL=aarch64 ;;
+        armv7l|armv7|armhf|arm)  ARCH_LABEL=armhf ;;
+        *) echo "unsupported build arch: $(uname -m)"; exit 1 ;;
+    esac
+fi
+echo "### Target arch: $ARCH_LABEL (uname -m: $(uname -m))"
+
+# Sanity-check: the toolchain's actual word size must match the requested arch,
+# so a wrong-platform container (stale image cache) fails loudly instead of
+# silently producing mislabeled binaries.
+case "$ARCH_LABEL:$(uname -m)" in
+    aarch64:aarch64) ;;
+    armhf:armv7l|armhf:armv7|armhf:armhf|armhf:arm) ;;
+    *) echo "ERROR: ARCH_LABEL=$ARCH_LABEL but container is $(uname -m) - wrong-platform image?"; exit 1 ;;
 esac
-echo "### Target arch: $ARCH_LABEL ($(uname -m))"
 
 OUT="/work/out/$ARCH_LABEL"
 SRC="/work/.src-cache/$ARCH_LABEL"
