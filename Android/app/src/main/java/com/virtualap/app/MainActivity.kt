@@ -6,13 +6,10 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.*
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -69,28 +66,13 @@ class MainActivity : ComponentActivity() {
                         composable(Screens.ROOT_CHECK) {
                             RootCheckScreen(
                                 rootStatus = appVm.rootStatus,
-                                onCheckRoot = { appVm.checkRoot() },
-                                onNavigateNext = {
-                                    if (appVm.installStatus == InstallStatus.Installed)
-                                        navController.navigate(Screens.MAIN) {
-                                            popUpTo(Screens.ROOT_CHECK) { inclusive = true }
-                                        }
-                                    else
-                                        navController.navigate(Screens.SETUP) {
-                                            popUpTo(Screens.ROOT_CHECK) { inclusive = true }
-                                        }
-                                }
+                                onPollRoot = { appVm.pollRoot() }
                             )
                         }
                         composable(Screens.SETUP) {
-                            SetupScreen(
-                                onInstalled = {
-                                    appVm.markInstalled()
-                                    navController.navigate(Screens.MAIN) {
-                                        popUpTo(Screens.SETUP) { inclusive = true }
-                                    }
-                                }
-                            )
+                            // Navigation to MAIN is handled by the gating effect once
+                            // markInstalled() flips installStatus to Installed.
+                            SetupScreen(onInstalled = { appVm.markInstalled() })
                         }
                         composable(Screens.MAIN) {
                             MainScreen(
@@ -107,46 +89,31 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    // Auto-navigate from ROOT_CHECK once root + install status are known
+                    // Central gating: live root + backend status are the single
+                    // source of truth for which top-level screen is shown.
+                    //  - root denied (incl. revoked in background) -> full-screen
+                    //    root gate, no popup.
+                    //  - backend missing (e.g. /data/local/virtualap wiped) -> SETUP
+                    //    re-deploys it, even from MAIN.
+                    //  - root granted + installed -> MAIN.
                     LaunchedEffect(appVm.rootStatus, appVm.installStatus) {
-                        val current = navController.currentDestination?.route
-                        if (current != Screens.ROOT_CHECK) return@LaunchedEffect
-                        when {
-                            appVm.rootStatus == RootStatus.Granted
-                                && appVm.installStatus == InstallStatus.Installed ->
-                                navController.navigate(Screens.MAIN) {
-                                    popUpTo(Screens.ROOT_CHECK) { inclusive = true }
-                                }
-                            appVm.rootStatus == RootStatus.Granted
-                                && appVm.installStatus == InstallStatus.NotInstalled ->
-                                navController.navigate(Screens.SETUP) {
-                                    popUpTo(Screens.ROOT_CHECK) { inclusive = true }
-                                }
+                        val current = navController.currentDestination?.route ?: return@LaunchedEffect
+                        val target = when {
+                            appVm.rootStatus == RootStatus.Denied -> Screens.ROOT_CHECK
+                            appVm.rootStatus == RootStatus.Granted &&
+                                appVm.installStatus == InstallStatus.NotInstalled &&
+                                current != Screens.SETUP -> Screens.SETUP
+                            appVm.rootStatus == RootStatus.Granted &&
+                                appVm.installStatus == InstallStatus.Installed &&
+                                (current == Screens.ROOT_CHECK || current == Screens.SETUP) -> Screens.MAIN
+                            else -> null
                         }
-                    }
-
-                    // Root-revoked overlay — shown when background check fails for a returning user
-                    if (appVm.rootRevokedInBackground) {
-                        AlertDialog(
-                            onDismissRequest = {},
-                            icon = {
-                                Icon(
-                                    imageVector = Icons.Default.Shield,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.error
-                                )
-                            },
-                            title = { Text(stringResource(R.string.root_revoked_title)) },
-                            text = {
-                                Text(stringResource(R.string.root_revoked_desc))
-                            },
-                            confirmButton = {
-                                Button(onClick = { appVm.retryRootAfterRevoke() }) {
-                                    Text(stringResource(R.string.retry))
-                                }
-                            },
-                            dismissButton = {}
-                        )
+                        if (target != null && target != current) {
+                            navController.navigate(target) {
+                                popUpTo(navController.graph.startDestinationId) { inclusive = true }
+                                launchSingleTop = true
+                            }
+                        }
                     }
                 }
             }

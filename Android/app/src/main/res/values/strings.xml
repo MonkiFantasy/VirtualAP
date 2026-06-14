@@ -3,9 +3,6 @@
     <string name="app_name">VirtualAP</string>
     <string name="root_check_title">Root Access Required</string>
     <string name="root_check_body">VirtualAP needs root access to create virtual network interfaces and manage the AP.</string>
-    <string name="grant_root">Grant Root Access</string>
-    <string name="checking">Checking…</string>
-    <string name="root_granted">Root access granted</string>
     <string name="root_denied">Root access denied</string>
     <string name="setup_title">Setting Up VirtualAP</string>
     <string name="done">Done</string>
@@ -70,13 +67,7 @@
     <string name="install_logs_label">VirtualAP install logs</string>
 
     <!-- Root Check Screen -->
-    <string name="continue_btn">Continue</string>
     <string name="checking_root">Checking root access…</string>
-    <string name="root_granted_desc">VirtualAP can now manage network interfaces.</string>
-
-    <!-- MainActivity / Root Revoked Dialog -->
-    <string name="root_revoked_title">Root access revoked</string>
-    <string name="root_revoked_desc">VirtualAP can no longer access root. Open your root manager and re-grant access, then retry.</string>
     <string name="auto_label">Auto</string>
 
     <!-- About Section -->

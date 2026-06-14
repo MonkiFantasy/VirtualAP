@@ -127,12 +127,16 @@ object APManager {
 
 
 
+    /** Every static binary the backend needs, under VAP_DIR/bin. */
+    private val REQUIRED_BINARIES = listOf("busybox", "hostapd", "hostapd_cli", "iw", "dnsmasq")
+
+    /**
+     * "Installed" means every required binary is present AND executable. If even
+     * one is missing (e.g. the user wiped /data/local/virtualap) this returns
+     * false so the setup flow re-deploys the payload.
+     */
     suspend fun isInstalled(): Boolean = withContext(Dispatchers.IO) {
-        // Scripts run from app files now; "installed" means the root-owned
-        // static binaries are in place under bin/.
-        Shell.cmd(
-            "test -x ${Constants.VAP_DIR}/bin/hostapd && test -x ${Constants.VAP_DIR}/bin/iw && " +
-            "test -x ${Constants.VAP_DIR}/bin/dnsmasq && test -x ${Constants.BUSYBOX} && echo ok"
-        ).exec().out.any { it.contains("ok") }
+        val checks = REQUIRED_BINARIES.joinToString(" && ") { "test -x ${Constants.VAP_DIR}/bin/$it" }
+        Shell.cmd("$checks && echo ok").exec().out.any { it.contains("ok") }
     }
 }

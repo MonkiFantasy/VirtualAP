@@ -29,11 +29,6 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     var installStatus by mutableStateOf(InstallStatus.Checking)
         private set
 
-    // Set to true when a background root check fails after the user has already
-    // passed the root check screen. Drives the revoked-root overlay in MainActivity.
-    var rootRevokedInBackground by mutableStateOf(false)
-        private set
-
     // Private mutable backing state — read via computed val to avoid JVM setter clash.
     private var _followSystemTheme by mutableStateOf(prefs.followSystemTheme)
     private var _darkThemeEnabled  by mutableStateOf(prefs.darkTheme)
@@ -78,34 +73,35 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /** Silent background re-verification for returning users. No UI unless it fails. */
+    /** Silent background re-verification for returning users. On failure it flips
+     *  rootStatus to Denied, which routes the UI to the full-screen root-denied
+     *  state (no popup). Never flickers to Checking. */
     private fun checkRootSilently() {
         viewModelScope.launch(Dispatchers.IO) {
             val status = RootChecker.checkRootAccess()
             if (status != RootStatus.Granted) {
                 prefs.rootAvailable = false
-                withContext(Dispatchers.Main) {
-                    rootStatus = RootStatus.Denied
-                    rootRevokedInBackground = true
-                }
+                withContext(Dispatchers.Main) { rootStatus = RootStatus.Denied }
             }
         }
     }
 
-    /** Called from the "Retry" button in the revoked-root overlay. */
-    fun retryRootAfterRevoke() {
-        rootRevokedInBackground = false
+    /** Re-check used by the full-screen root-denied state while it waits for the
+     *  user to grant root. Only advances on success (no Checking flicker). */
+    fun pollRoot() {
         viewModelScope.launch {
-            rootStatus = RootStatus.Checking
             val status = withContext(Dispatchers.IO) { RootChecker.checkRootAccess() }
-            rootStatus = status
-            prefs.rootAvailable = status == RootStatus.Granted
-            if (status != RootStatus.Granted) rootRevokedInBackground = true
+            if (status == RootStatus.Granted) {
+                rootStatus = RootStatus.Granted
+                prefs.rootAvailable = true
+                prefs.hasSeenRootCheck = true
+                checkInstalled()
+            }
         }
     }
 
     /** On-demand root re-verification (e.g. pull-to-refresh on the main screen).
-     *  Silent on success; surfaces the revoked overlay if access is gone. */
+     *  Silent on success; routes to the root-denied screen if access is gone. */
     fun recheckRoot() = checkRootSilently()
 
     fun checkInstalled() {
