@@ -258,6 +258,16 @@ fun MainScreen(
                                 }
                             }
                         }
+                        // WPA3 (incl. the transition mode) can be rejected by older
+                        // client devices; warn so users know to fall back to WPA2.
+                        if (vm.config.security == "wpa2wpa3" || vm.config.security == "wpa3") {
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                stringResource(R.string.security_wpa3_hint),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                         Spacer(Modifier.height(8.dp))
 
                         // Password — open networks have none, so hide the field there.
