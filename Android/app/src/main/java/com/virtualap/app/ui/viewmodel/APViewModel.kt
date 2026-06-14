@@ -192,8 +192,12 @@ class APViewModel(application: Application) : AndroidViewModel(application) {
         config = config.copy(pmf = value)
     }
 
-    /** Open networks need no passphrase; every WPA mode needs >= 8 chars. */
+    /** Open networks have no passphrase field; WPA modes show one. */
     fun passwordRequired(): Boolean = config.security != "open"
+
+    /** Open needs no passphrase; WPA (WPA-PSK/SAE) passphrases are 8-63 chars. */
+    fun passwordValid(): Boolean =
+        config.security == "open" || config.password.length in 8..63
 
     private fun refreshLog() {
         viewModelScope.launch {
@@ -204,7 +208,7 @@ class APViewModel(application: Application) : AndroidViewModel(application) {
     fun start() {
         val cfg = config
         if (cfg.ssid.isBlank()) return
-        if (cfg.security != "open" && cfg.password.length < 8) return
+        if (!passwordValid()) return
         if (cfg.containerMode && cfg.containerName.isBlank()) return
         viewModelScope.launch {
             isStarting = true

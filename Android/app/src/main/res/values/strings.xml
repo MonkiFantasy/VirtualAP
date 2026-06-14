@@ -35,7 +35,8 @@
     <string name="status_stopped">Stopped</string>
     <string name="access_point_title">Access Point</string>
     <string name="ssid_label">Network Name (SSID)</string>
-    <string name="password_label">Password (min 8 chars)</string>
+    <string name="password_label">Password (8–63 chars)</string>
+    <string name="password_length_error">Must be 8–63 characters</string>
     <string name="hide_password_desc">Hide password</string>
     <string name="show_password_desc">Show password</string>
     <string name="band_label">Band</string>

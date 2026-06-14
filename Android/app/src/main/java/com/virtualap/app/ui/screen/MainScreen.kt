@@ -262,12 +262,20 @@ fun MainScreen(
 
                         // Password — open networks have none, so hide the field there.
                         if (vm.passwordRequired()) {
+                            // WPA-PSK/SAE passphrase is 8-63 chars; flag an out-of-range
+                            // value once the user has started typing (blank stays neutral).
+                            val pwLen = vm.config.password.length
+                            val pwError = pwLen in 1..7 || pwLen > 63
                             OutlinedTextField(
                                 value = vm.config.password,
                                 onValueChange = { vm.config = vm.config.copy(password = it) },
                                 label = { Text(stringResource(R.string.password_label)) },
                                 modifier = Modifier.fillMaxWidth(),
                                 singleLine = true,
+                                isError = pwError,
+                                supportingText = if (pwError) {
+                                    { Text(stringResource(R.string.password_length_error), color = MaterialTheme.colorScheme.error) }
+                                } else null,
                                 visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                                 trailingIcon = {
@@ -668,7 +676,7 @@ fun MainScreen(
                     Button(
                         onClick = { if (status.running) vm.stop() else vm.start() },
                         modifier = Modifier.fillMaxWidth().height(52.dp),
-                        enabled = !isLoading && (status.running || (vm.config.ssid.isNotBlank() && (!vm.passwordRequired() || vm.config.password.length >= 8) && (!vm.config.containerMode || vm.config.containerName.isNotBlank()))),
+                        enabled = !isLoading && (status.running || (vm.config.ssid.isNotBlank() && vm.passwordValid() && (!vm.config.containerMode || vm.config.containerName.isNotBlank()))),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (status.running)
                                 MaterialTheme.colorScheme.error

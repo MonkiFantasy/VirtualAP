@@ -830,9 +830,13 @@ teardown_bridged() {
 
 cmd_start() {
     [ -z "$SSID" ] && { error "SSID not set (use -s or save a config first)"; exit 1; }
-    # Open networks carry no passphrase; every WPA mode needs >= 8 chars.
-    if [ "$SECURITY" != "open" ] && [ "$($PRINTF %s "$PASSWORD" | $WC -c)" -lt 8 ]; then
-        error "Password must be at least 8 characters."; exit 1
+    # Open networks carry no passphrase; WPA modes use a WPA-PSK/SAE passphrase,
+    # which the standard (and hostapd) bound to 8-63 characters.
+    if [ "$SECURITY" != "open" ]; then
+        plen=$($PRINTF %s "$PASSWORD" | $WC -c)
+        if [ "$plen" -lt 8 ] || [ "$plen" -gt 63 ]; then
+            error "Password must be 8-63 characters."; exit 1
+        fi
     fi
 
     # Validate channel compatibility with selected band
