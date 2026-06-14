@@ -600,29 +600,21 @@ hostapd_try() {
     [ -f "$RUN_DIR/hostapd.pid" ] && $KILL -0 "$($CAT "$RUN_DIR/hostapd.pid")" 2>/dev/null
 }
 
-# Start hostapd at the picked width, stepping down on failure (80 -> 40 -> 20)
-# so the AP always comes up at the widest width the chip actually accepts.
+# Generate the conf at the picked width and launch hostapd once. pick_width has
+# already resolved EFFECTIVE_WIDTH to a width the chip + channel support (warning
+# on any downgrade), so there's no width fallback to attempt here.
 # $1 = optional bridge name (managed mode), passed through to write_hostapd_conf.
 start_hostapd() {
-    local hb="$1" w order
-    case "$EFFECTIVE_WIDTH" in
-        80) order="80 40 20" ;;
-        40) order="40 20" ;;
-        *)  order="20" ;;
-    esac
-    for w in $order; do
-        EFFECTIVE_WIDTH="$w"
-        write_hostapd_conf "$hb"
-        log "Starting hostapd (${BAND}GHz ch $CHANNEL, ${w}MHz)..."
-        if hostapd_try; then
-            log "hostapd running (PID $($CAT "$RUN_DIR/hostapd.pid" 2>/dev/null), ${w}MHz)"
-            return 0
-        fi
-        warn "hostapd failed at ${w}MHz; trying a narrower width."
-        # Clean only hostapd's pidfile (the shared dnsmasq.conf must survive).
-        [ -f "$RUN_DIR/hostapd.pid" ] && $KILL "$($CAT "$RUN_DIR/hostapd.pid")" 2>/dev/null
-        $RM -f "$RUN_DIR/hostapd.pid"
-    done
+    local hb="$1"
+    write_hostapd_conf "$hb"
+    log "Starting hostapd (${BAND}GHz ch $CHANNEL, ${EFFECTIVE_WIDTH}MHz)..."
+    if hostapd_try; then
+        log "hostapd running (PID $($CAT "$RUN_DIR/hostapd.pid" 2>/dev/null), ${EFFECTIVE_WIDTH}MHz)"
+        return 0
+    fi
+    # Clean only hostapd's pidfile (the shared dnsmasq.conf must survive).
+    [ -f "$RUN_DIR/hostapd.pid" ] && $KILL "$($CAT "$RUN_DIR/hostapd.pid")" 2>/dev/null
+    $RM -f "$RUN_DIR/hostapd.pid"
     error "hostapd failed to start (check band/channel - try band 2)."
     return 1
 }
@@ -630,7 +622,7 @@ start_hostapd() {
 start_services() {
     log "Generating service configs (band ${BAND}GHz, channel $CHANNEL)..."
 
-    # hostapd.conf is generated inside start_hostapd (it owns the width ladder).
+    # hostapd.conf is generated inside start_hostapd.
 
     local dns_config=""
     if [ -n "$DNS_SERVERS" ]; then
@@ -801,7 +793,7 @@ EOF
 start_services_bridged() {
     log "Starting hostapd (managed/bridged mode)..."
     # No bridge= - we enslave ap0 ourselves below. hostapd.conf is generated
-    # inside start_hostapd (it owns the width ladder).
+    # inside start_hostapd.
     start_hostapd "" || return 1
 
     # Enslave ap0 only after hostapd is up, retrying past the transient EPERM.
