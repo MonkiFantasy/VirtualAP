@@ -14,8 +14,17 @@
 # Output -> /work/out, build scratch -> /work/.src-cache
 set -e
 
-OUT=/work/out
-SRC=/work/.src-cache
+# Derive the arch label from the (emulated) container arch. build-static.sh runs
+# this once per --platform; output is kept in a per-arch subdir.
+case "$(uname -m)" in
+    aarch64)                 ARCH_LABEL=aarch64 ;;
+    armv7l|armv7|armhf|arm)  ARCH_LABEL=armhf ;;
+    *) echo "unsupported build arch: $(uname -m)"; exit 1 ;;
+esac
+echo "### Target arch: $ARCH_LABEL ($(uname -m))"
+
+OUT="/work/out/$ARCH_LABEL"
+SRC="/work/.src-cache/$ARCH_LABEL"
 mkdir -p "$OUT" "$SRC"
 
 # Fully static, no PIE: a plain -static link on Alpine yields a static-PIE that
