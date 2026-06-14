@@ -15,6 +15,10 @@ RUN_DIR="${BASE_DIR}/run"
 CONF_FILE="${BASE_DIR}/ap.conf"
 STATE_FILE="${BASE_DIR}/run.state"
 LOG_FILE="${BASE_DIR}/logs/ap.log"
+# Per-daemon logs so a crash/failure leaves a trace instead of vanishing (both
+# daemonize and would otherwise drop their output into the void).
+HOSTAPD_LOG="${BASE_DIR}/logs/hostapd.log"
+DNSMASQ_LOG="${BASE_DIR}/logs/dnsmasq.log"
 
 # Static AP-stack binaries (replace the old Alpine chroot tools)
 HOSTAPD="${BIN_DIR}/hostapd"
@@ -593,9 +597,13 @@ ignore_broadcast_ssid=$HIDDEN
 EOF
 }
 
-# Launch hostapd once against the current conf and confirm it stayed up.
+# Launch hostapd once against the current conf and confirm it stayed up. -t -f
+# captures timestamped hostapd output to its own log (it daemonizes with -B, so
+# the failure reason would otherwise be lost); stderr is appended too to catch
+# any pre-daemonize config errors. Log is truncated per start.
 hostapd_try() {
-    "$HOSTAPD" -B -P "$RUN_DIR/hostapd.pid" "$RUN_DIR/hostapd.conf" || return 1
+    : > "$HOSTAPD_LOG" 2>/dev/null
+    "$HOSTAPD" -B -t -f "$HOSTAPD_LOG" -P "$RUN_DIR/hostapd.pid" "$RUN_DIR/hostapd.conf" 2>>"$HOSTAPD_LOG" || return 1
     $SLEEP 2
     [ -f "$RUN_DIR/hostapd.pid" ] && $KILL -0 "$($CAT "$RUN_DIR/hostapd.pid")" 2>/dev/null
 }
@@ -656,11 +664,14 @@ $dns_config
 no-hosts
 pid-file=$RUN_DIR/dnsmasq.pid
 user=root
+log-facility=$DNSMASQ_LOG
+log-dhcp
 EOF
 
     start_hostapd "" || return 1
 
     log "Starting dnsmasq..."
+    : > "$DNSMASQ_LOG" 2>/dev/null
     if ! "$DNSMASQ" -C "$RUN_DIR/dnsmasq.conf"; then
         error "dnsmasq failed to start"
         return 1
