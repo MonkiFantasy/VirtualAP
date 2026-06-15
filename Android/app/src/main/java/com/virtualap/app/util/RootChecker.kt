@@ -13,50 +13,21 @@ enum class RootStatus {
 
 object RootChecker {
     /**
-     * Optimized root check with minimal allocations and fast path for already-granted root.
+     * Returns Granted only if the app holds root AND a live `id` command runs.
+     * If root isn't granted yet, runs `id` once to trigger the SU manager prompt.
      */
     suspend fun checkRootAccess(): RootStatus = withContext(Dispatchers.IO) {
         return@withContext try {
-            // Fast path: check if root is already granted (cached check, no allocation)
-            val isRootGranted = Shell.isAppGrantedRoot() == true
-
-            if (isRootGranted) {
-                // Use fastCmdResult for verification (minimal overhead)
-                if (ShellUtils.fastCmdResult("id")) {
+            if (Shell.isAppGrantedRoot() == true) {
+                if (ShellUtils.fastCmdResult("id")) RootStatus.Granted else RootStatus.Denied
+            } else {
+                // Not granted yet - this triggers the SU manager dialog.
+                val result = Shell.cmd("id").exec()
+                if (result.isSuccess && Shell.isAppGrantedRoot() == true) {
                     RootStatus.Granted
                 } else {
                     RootStatus.Denied
                 }
-            } else {
-                // Try to request root (will show dialog)
-                try {
-                    val result = Shell.cmd("id").exec()
-                    if (result.isSuccess && Shell.isAppGrantedRoot() == true) {
-                        RootStatus.Granted
-                    } else {
-                        RootStatus.Denied
-                    }
-                } catch (e: Exception) {
-                RootStatus.Denied
-                }
-            }
-        } catch (e: Exception) {
-            RootStatus.Denied
-        }
-    }
-
-    fun checkRootAccessSync(): RootStatus {
-        return try {
-            val isRootAvailable = Shell.isAppGrantedRoot() == true
-            if (isRootAvailable) {
-                val verifyResult = ShellUtils.fastCmdResult("id")
-                if (verifyResult) {
-                    RootStatus.Granted
-                } else {
-                    RootStatus.Denied
-                }
-            } else {
-                RootStatus.Denied
             }
         } catch (e: Exception) {
             RootStatus.Denied
