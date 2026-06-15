@@ -41,8 +41,8 @@ fun RootCheckScreen(
     var cardVisible by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        delay(60); titleVisible = true
-        delay(120); cardVisible = true
+        delay(40); titleVisible = true
+        delay(80); cardVisible = true
     }
 
     // While denied, keep re-checking so the screen advances itself once the user
@@ -58,12 +58,12 @@ fun RootCheckScreen(
 
     val titleAlpha by animateFloatAsState(
         if (titleVisible) 1f else 0f,
-        tween(durationMillis = 400, easing = FastOutSlowInEasing),
+        tween(durationMillis = 200, easing = FastOutSlowInEasing),
         label = "titleAlpha"
     )
     val cardAlpha by animateFloatAsState(
         if (cardVisible) 1f else 0f,
-        tween(durationMillis = 400, easing = FastOutSlowInEasing),
+        tween(durationMillis = 200, easing = FastOutSlowInEasing),
         label = "cardAlpha"
     )
 

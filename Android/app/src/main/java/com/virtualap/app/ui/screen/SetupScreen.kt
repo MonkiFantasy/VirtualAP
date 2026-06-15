@@ -4,8 +4,6 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -97,7 +95,7 @@ fun SetupScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .animateContentSize(spring(stiffness = Spring.StiffnessLow))
+                    .animateContentSize()
             ) {
                 TerminalConsole(
                     logs = logs,

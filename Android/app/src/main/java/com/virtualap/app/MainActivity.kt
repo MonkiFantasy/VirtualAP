@@ -4,6 +4,9 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.*
@@ -65,7 +68,18 @@ class MainActivity : ComponentActivity() {
 
                     val navController = rememberNavController()
 
-                    NavHost(navController = navController, startDestination = startDestination) {
+                    // navigation-compose defaults to a 700ms fade between
+                    // destinations, which feels sluggish entering Settings and
+                    // going back. Use a quick standard ~200ms fade instead.
+                    val navFade = tween<Float>(durationMillis = 200)
+                    NavHost(
+                        navController = navController,
+                        startDestination = startDestination,
+                        enterTransition = { fadeIn(animationSpec = navFade) },
+                        exitTransition = { fadeOut(animationSpec = navFade) },
+                        popEnterTransition = { fadeIn(animationSpec = navFade) },
+                        popExitTransition = { fadeOut(animationSpec = navFade) }
+                    ) {
                         composable(Screens.ROOT_CHECK) {
                             RootCheckScreen(
                                 rootStatus = appVm.rootStatus,
