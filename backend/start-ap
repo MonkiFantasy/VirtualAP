@@ -612,6 +612,12 @@ EOF
 # captures timestamped hostapd output to its own log (it daemonizes with -B, so
 # the failure reason would otherwise be lost); stderr is appended too to catch
 # any pre-daemonize config errors. Log is truncated per start.
+#
+# Liveness here is a fixed 2s sleep + PID check, not a poll. With ieee80211d=1
+# hostapd can sit in COUNTRY_UPDATE ~5s, so a death *after* the 2s check (e.g. a
+# late channel/width rejection by the firmware) is not caught here - the status
+# command and hostapd.log surface it instead. Polling was tried and removed: it
+# slowed down the common happy-path start for no real-world gain.
 hostapd_try() {
     : > "$HOSTAPD_LOG" 2>/dev/null
     "$HOSTAPD" -B -t -f "$HOSTAPD_LOG" -P "$RUN_DIR/hostapd.pid" "$RUN_DIR/hostapd.conf" 2>>"$HOSTAPD_LOG" || return 1
@@ -902,14 +908,14 @@ cmd_start() {
         # --- Managed mode: a Droidspaces container owns the LAN ---
         if [ -z "$(ds_container_pid "$CONTAINER")" ]; then
             error "Container '$CONTAINER' is not running - start it first."
-            full_stop_bridged; exit 1
+            teardown_bridged; exit 1
         fi
         pick_channel
         pick_width
-        trap 'full_stop_bridged; exit 1' INT TERM
+        trap 'teardown_bridged; exit 1' INT TERM
 
-        if ! config_network_bridged; then full_stop_bridged; exit 1; fi
-        if ! start_services_bridged; then full_stop_bridged; exit 1; fi
+        if ! config_network_bridged; then teardown_bridged; exit 1; fi
+        if ! start_services_bridged; then teardown_bridged; exit 1; fi
 
         log "VirtualAP is ACTIVE (managed by container '$CONTAINER')!"
         log "  SSID     : $SSID (${BAND}GHz, channel $CHANNEL, ${EFFECTIVE_WIDTH}MHz)"
@@ -920,10 +926,10 @@ cmd_start() {
         resolve_upstream || exit 1
         pick_channel
         pick_width
-        trap 'full_stop; exit 1' INT TERM
+        trap 'teardown; exit 1' INT TERM
 
-        if ! config_network; then full_stop; exit 1; fi
-        if ! start_services; then full_stop; exit 1; fi
+        if ! config_network; then teardown; exit 1; fi
+        if ! start_services; then teardown; exit 1; fi
 
         log "VirtualAP is ACTIVE!"
         log "  SSID    : $SSID (${BAND}GHz, channel $CHANNEL, ${EFFECTIVE_WIDTH}MHz)"
@@ -932,25 +938,16 @@ cmd_start() {
     fi
 }
 
-# Full teardown of the routed-mode AP.
-full_stop() {
-    teardown
-}
-
-full_stop_bridged() {
-    teardown_bridged
-}
-
 cmd_stop() {
     if $GREP -q '^mode=bridged' "$STATE_FILE" 2>/dev/null; then
-        full_stop_bridged
+        teardown_bridged
     else
-        full_stop
+        teardown
     fi
 }
 
 cmd_status() {
-    local running=0 hostapd_state="dead" dnsmasq_state="dead" clients=0 mode="routed"
+    local running=0 hostapd_state="dead" dnsmasq_state="dead" clients=0 mode="routed" width=""
     [ -f "$STATE_FILE" ] && $GREP -q '^mode=bridged' "$STATE_FILE" && mode="bridged"
 
     if [ -f "$STATE_FILE" ]; then
@@ -969,11 +966,20 @@ cmd_status() {
     $ECHO "hostapd=$hostapd_state"
     $ECHO "dnsmasq=$dnsmasq_state"
     $ECHO "clients=$clients"
-    # Actual channel width, read from the live conf so it reflects any fallback.
-    if [ "$running" = "1" ] && [ -f "$RUN_DIR/hostapd.conf" ]; then
-        if   $GREP -q '^vht_oper_chwidth=1' "$RUN_DIR/hostapd.conf"; then $ECHO "width=80"
-        elif $GREP -q '^ht_capab=\[HT40'    "$RUN_DIR/hostapd.conf"; then $ECHO "width=40"
-        else $ECHO "width=20"; fi
+    # Actual channel width, read live from the radio (iw) so it reflects any
+    # firmware downgrade - FullMAC same-channel concurrency can force 20MHz
+    # regardless of what hostapd.conf requested. Fall back to the conf only when
+    # iw reports no width line.
+    if [ "$running" = "1" ]; then
+        width=$("$IW" dev "$AP_IFACE" info 2>/dev/null \
+            | $SED -n 's/.*width: \([0-9]\{2,3\}\) MHz.*/\1/p' | $HEAD -n1)
+        if [ -n "$width" ]; then
+            $ECHO "width=$width"
+        elif [ -f "$RUN_DIR/hostapd.conf" ]; then
+            if   $GREP -q '^vht_oper_chwidth=1' "$RUN_DIR/hostapd.conf"; then $ECHO "width=80"
+            elif $GREP -q '^ht_capab=\[HT40'    "$RUN_DIR/hostapd.conf"; then $ECHO "width=40"
+            else $ECHO "width=20"; fi
+        fi
     fi
     # Active security mode, derived from the live conf's key-mgmt line.
     if [ "$running" = "1" ] && [ -f "$RUN_DIR/hostapd.conf" ]; then

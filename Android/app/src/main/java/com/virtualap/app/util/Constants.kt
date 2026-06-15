@@ -7,7 +7,6 @@ object Constants {
     const val BUSYBOX = "$VAP_DIR/bin/busybox"
     const val PREFS_NAME = "virtualap_prefs"
     const val KEY_ROOT_AVAILABLE = "root_available"
-    const val KEY_INSTALLED = "installed"
     const val KEY_FOLLOW_SYSTEM_THEME = "follow_system_theme"
     const val KEY_DARK_THEME = "dark_theme"
     const val KEY_AMOLED_MODE = "amoled_mode"

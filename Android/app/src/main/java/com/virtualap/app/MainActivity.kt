@@ -50,12 +50,15 @@ class MainActivity : ComponentActivity() {
                     // Compute start destination once from SharedPreferences (synchronous read)
                     val prefs = remember { PreferencesManager.getInstance(applicationContext) }
                     val startDestination = remember {
-                        // An APK update can ship new binaries - send the user
-                        // back through setup so they get re-deployed.
+                        // !payloadOutdated means the deployed payload matches the
+                        // APK's (set only by a verified install) - i.e. installed
+                        // and current. An APK update with new binaries flips this
+                        // and routes back through setup for re-deploy. The live
+                        // wiped-binaries case is corrected by the gating effect.
                         val payloadOutdated = VirtualAPInstaller.payloadUpdateAvailable(applicationContext)
                         when {
                             !prefs.hasSeenRootCheck || !prefs.rootAvailable -> Screens.ROOT_CHECK
-                            prefs.isInstalled && !payloadOutdated -> Screens.MAIN
+                            !payloadOutdated -> Screens.MAIN
                             else -> Screens.SETUP
                         }
                     }

@@ -118,7 +118,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun markInstalled() {
+        // The installer already recorded the deployed payload version; the
+        // start-destination guess and the live re-check both key off that, so
+        // there's no separate "installed" flag to set here.
         installStatus = InstallStatus.Installed
-        prefs.isInstalled = true
     }
 }

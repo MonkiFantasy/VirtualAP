@@ -82,19 +82,11 @@ class APViewModel(application: Application) : AndroidViewModel(application) {
     init {
         viewModelScope.launch {
             snapshotFlow { config }.collect { cfg ->
-                prefs.apSsid = cfg.ssid
-                prefs.apPassword = cfg.password
-                prefs.apBand = cfg.band
-                prefs.apChannel = cfg.channel
-                prefs.apWidth = cfg.width
-                prefs.apUpstream = cfg.upstream
-                prefs.apGateway = cfg.gateway
-                prefs.apDnsServers = cfg.dnsServers
-                prefs.apHidden = cfg.hidden
-                prefs.apSecurity = cfg.security
-                prefs.apPmf = cfg.pmf
-                prefs.apContainerMode = cfg.containerMode
-                prefs.apContainer = cfg.containerName
+                prefs.saveApConfig(
+                    cfg.ssid, cfg.password, cfg.band, cfg.channel, cfg.width,
+                    cfg.upstream, cfg.gateway, cfg.dnsServers, cfg.hidden,
+                    cfg.security, cfg.pmf, cfg.containerMode, cfg.containerName
+                )
             }
         }
         // One parallel initial load — gate the UI on it so everything appears at

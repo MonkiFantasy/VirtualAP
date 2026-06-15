@@ -19,12 +19,6 @@ class PreferencesManager private constructor(context: Context) {
             prefs.edit().putBoolean(Constants.KEY_ROOT_AVAILABLE, value).apply()
         }
 
-    var isInstalled: Boolean
-        get() = prefs.getBoolean(Constants.KEY_INSTALLED, false)
-        set(value) {
-            prefs.edit().putBoolean(Constants.KEY_INSTALLED, value).apply()
-        }
-
     var followSystemTheme: Boolean
         get() = prefs.getBoolean(Constants.KEY_FOLLOW_SYSTEM_THEME, true)
         set(value) {
@@ -117,6 +111,33 @@ class PreferencesManager private constructor(context: Context) {
     var payloadVersion: String
         get() = prefs.getString(Constants.KEY_PAYLOAD_VERSION, "") ?: ""
         set(value) { prefs.edit().putString(Constants.KEY_PAYLOAD_VERSION, value).apply() }
+
+    /**
+     * Persist the full AP config in one batched edit. The viewmodel writes the
+     * whole config on every change, so this avoids 13 separate apply() calls
+     * (one per field) on each keystroke.
+     */
+    fun saveApConfig(
+        ssid: String, password: String, band: String, channel: String, width: String,
+        upstream: String, gateway: String, dnsServers: String, hidden: Boolean,
+        security: String, pmf: Boolean, containerMode: Boolean, container: String
+    ) {
+        prefs.edit()
+            .putString(Constants.KEY_AP_SSID, ssid)
+            .putString(Constants.KEY_AP_PASSWORD, password)
+            .putString(Constants.KEY_AP_BAND, band)
+            .putString(Constants.KEY_AP_CHANNEL, channel)
+            .putString(Constants.KEY_AP_WIDTH, width)
+            .putString(Constants.KEY_AP_UPSTREAM, upstream)
+            .putString(Constants.KEY_AP_GATEWAY, gateway)
+            .putString(Constants.KEY_AP_DNS, dnsServers)
+            .putBoolean(Constants.KEY_AP_HIDDEN, hidden)
+            .putString(Constants.KEY_AP_SECURITY, security)
+            .putBoolean(Constants.KEY_AP_PMF, pmf)
+            .putBoolean(Constants.KEY_AP_CONTAINER_MODE, containerMode)
+            .putString(Constants.KEY_AP_CONTAINER, container)
+            .apply()
+    }
 
     companion object {
         @Volatile

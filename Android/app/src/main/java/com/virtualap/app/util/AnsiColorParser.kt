@@ -8,10 +8,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material3.MaterialTheme
 
 /**
- * High-performance ANSI color parser optimized for real-time terminal rendering.
- * Pre-computes color mappings and uses efficient regex patterns for minimal overhead.
+ * Parses ANSI SGR escape codes (colors, bold/dim/italic/underline) into Compose
+ * AnnotatedString spans for the terminal log view. Color maps and the escape
+ * regex are computed once and shared across calls.
  */
 object AnsiColorParser {
+    // Single compiled pattern for "<ESC>[<codes>m", shared by parseAnsi/stripAnsi.
+    private val ANSI_REGEX = Regex("""\[([0-9;]*)m""")
+
     // Pre-computed ANSI color mappings (8 standard colors + bright variants)
     private val ansiColors = mapOf(
         // Standard colors
@@ -74,9 +78,7 @@ object AnsiColorParser {
             var isUnderline = false
             var currentIndex = 0
 
-            // Regex pattern for ANSI escape sequences: [<codes>m
-            val ansiPattern = Regex("""\[([0-9;]*)m""")
-            val matches = ansiPattern.findAll(text)
+            val matches = ANSI_REGEX.findAll(text)
 
             for (match in matches) {
                 // Add text before the ANSI code
@@ -196,6 +198,6 @@ object AnsiColorParser {
      * Strip ANSI codes from text (for clipboard/copy operations).
      */
     fun stripAnsi(text: String): String {
-        return text.replace(Regex("""\[([0-9;]*)m"""), "")
+        return text.replace(ANSI_REGEX, "")
     }
 }
