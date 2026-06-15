@@ -68,8 +68,9 @@ VAP_BRIDGE="vap-br0"      # host-side bridge
 VAP_VETH_HOST="vap-v0"    # host-side veth (bridge port)
 VAP_VETH_PEER="vap-p0"    # peer veth before it enters the container
 VAP_PORT="vaplan0"        # interface name inside the container
-VAP_LAN_GW="192.168.40.1" # LAN gateway we provision inside OpenWRT (distinct from ds-br0/ap0)
-VAP_LAN_NET="192.168.40.0/24"
+# The LAN provisioned inside the container reuses the configured gateway/subnet
+# (IP_GW / IP_NET, default 192.168.42.1) - the same one routed mode uses, so a
+# custom -g gateway applies in both modes.
 
 # Droidspaces CLI: prefer the install path, fall back to PATH.
 if [ -x "/data/local/Droidspaces/bin/droidspaces" ]; then
@@ -715,12 +716,12 @@ ip_up_retry() {
 
 # OpenWrt auto-provisioning: a LAN on VAP_PORT with its own DHCP + NAT out WAN.
 provision_openwrt() {
-    log "Provisioning OpenWrt LAN ($VAP_LAN_GW) on $VAP_PORT..."
+    log "Provisioning OpenWrt LAN ($IP_GW) on $VAP_PORT..."
 
     ds_run uci set network.vaplan=interface
     ds_run uci set network.vaplan.device="$VAP_PORT"
     ds_run uci set network.vaplan.proto=static
-    ds_run uci set network.vaplan.ipaddr="$VAP_LAN_GW"
+    ds_run uci set network.vaplan.ipaddr="$IP_GW"
     ds_run uci set network.vaplan.netmask=255.255.255.0
     ds_run uci commit network
 
@@ -747,8 +748,8 @@ provision_openwrt() {
             ds_run /etc/init.d/firewall reload >/dev/null 2>&1
             log "OpenWrt firewall (fw3) reloaded - '$VAP_PORT' masqueraded via its wan zone."
         else
-            ds_run iptables-legacy -t nat -D POSTROUTING -s "$VAP_LAN_NET" ! -d "$VAP_LAN_NET" -j MASQUERADE 2>/dev/null
-            if ds_run iptables-legacy -t nat -A POSTROUTING -s "$VAP_LAN_NET" ! -d "$VAP_LAN_NET" -j MASQUERADE; then
+            ds_run iptables-legacy -t nat -D POSTROUTING -s "$IP_NET" ! -d "$IP_NET" -j MASQUERADE 2>/dev/null
+            if ds_run iptables-legacy -t nat -A POSTROUTING -s "$IP_NET" ! -d "$IP_NET" -j MASQUERADE; then
                 log "OpenWrt NAT installed (iptables-legacy MASQUERADE)."
             else
                 warn "OpenWrt: failed to add iptables-legacy MASQUERADE rule."
@@ -810,7 +811,7 @@ bridge=$VAP_BRIDGE
 band=$BAND
 channel=$CHANNEL
 ssid=$SSID
-gateway=$VAP_LAN_GW
+gateway=$IP_GW
 started=$($DATE '+%Y-%m-%d %H:%M:%S')
 EOF
 
@@ -920,7 +921,7 @@ cmd_start() {
         log "VirtualAP is ACTIVE (managed by container '$CONTAINER')!"
         log "  SSID     : $SSID (${BAND}GHz, channel $CHANNEL, ${EFFECTIVE_WIDTH}MHz)"
         log "  Upstream : container '$CONTAINER' via $VAP_BRIDGE -> $VAP_PORT"
-        log "  LAN      : served by the container ($VAP_LAN_GW)"
+        log "  LAN      : served by the container ($IP_GW)"
     else
         # --- Routed mode: classic VirtualAP L3 ---
         resolve_upstream || exit 1
@@ -988,7 +989,7 @@ cmd_status() {
         elif $GREP -q '^wpa_key_mgmt=SAE'         "$RUN_DIR/hostapd.conf"; then $ECHO "security=wpa3"
         else $ECHO "security=wpa2"; fi
     fi
-    # gateway/ssid/etc. come from the state file (routed: IP_GW; bridged: VAP_LAN_GW)
+    # gateway/ssid/etc. come from the state file (IP_GW in both routed + bridged)
     if [ -f "$STATE_FILE" ]; then
         $GREP -E '^(ssid|band|channel|upstream|upstream_table|upstream_iface|gateway|dns_servers|container|started)=' "$STATE_FILE"
     else
@@ -1078,7 +1079,7 @@ while getopts "s:p:o:b:c:W:w:g:d:H:A:M:K:h" opt 2>/dev/null; do
         c) CHANNEL="$OPTARG" ;;
         W) WIDTH="$OPTARG" ;;
         w) PHY_IFACE="$OPTARG" ;;
-        g) IP_GW="$OPTARG" ;;
+        g) IP_GW="${OPTARG:-192.168.42.1}" ;;   # empty -g falls back to the default
         d) DNS_SERVERS="$OPTARG" ;;
         H) HIDDEN="$OPTARG" ;;
         A) SECURITY="$OPTARG" ;;

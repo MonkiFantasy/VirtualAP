@@ -578,17 +578,19 @@ fun MainScreen(
                         )
                         Spacer(Modifier.height(12.dp))
 
-                      // Gateway IP + DNS are VirtualAP's own L3 — irrelevant when
-                      // a container owns the LAN, so hide them in managed mode.
-                      if (!vm.config.containerMode) {
-                        // Gateway IP
+                        // Gateway IP - the AP subnet gateway in routed mode and the
+                        // LAN gateway provisioned inside the container in managed
+                        // mode, so it's shown in both. Blank uses the default.
                         var gatewayText by remember(vm.config.gateway) { mutableStateOf(vm.config.gateway) }
                         val gatewayError = gatewayText.isNotBlank() && !isValidIpv4(gatewayText)
                         OutlinedTextField(
                             value = gatewayText,
                             onValueChange = { v ->
                                 gatewayText = v
-                                if (isValidIpv4(v)) vm.config = vm.config.copy(gateway = v.trim())
+                                when {
+                                    v.isBlank() -> vm.config = vm.config.copy(gateway = "")
+                                    isValidIpv4(v) -> vm.config = vm.config.copy(gateway = v.trim())
+                                }
                             },
                             label = { Text(stringResource(R.string.gateway_ip_label)) },
                             placeholder = { Text(stringResource(R.string.gateway_ip_placeholder)) },
@@ -614,6 +616,9 @@ fun MainScreen(
                         )
                         Spacer(Modifier.height(8.dp))
 
+                      // DNS is VirtualAP's own L3 — irrelevant when a container owns
+                      // the LAN (it runs its own resolver), so hide it in managed mode.
+                      if (!vm.config.containerMode) {
                         // DNS Servers
                         var dnsText by remember(vm.config.dnsServers) { mutableStateOf(vm.config.dnsServers) }
                         val dnsError = !isValidDnsServers(dnsText)
@@ -648,7 +653,7 @@ fun MainScreen(
                             modifier = Modifier.fillMaxWidth()
                         )
                         Spacer(Modifier.height(8.dp))
-                      } // end !containerMode (Gateway IP + DNS)
+                      } // end !containerMode (DNS)
 
                         // Hide SSID
                         SwitchItem(

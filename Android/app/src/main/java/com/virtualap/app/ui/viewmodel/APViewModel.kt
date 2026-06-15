@@ -27,7 +27,7 @@ data class APConfig(
     val channel: String = "",
     val width: String = "auto",
     val upstream: String = "auto",
-    val gateway: String = "192.168.42.1",
+    val gateway: String = "",        // blank = APViewModel.DEFAULT_GATEWAY
     val dnsServers: String = "",
     val hidden: Boolean = false,
     val security: String = "wpa2",   // open | wpa2 | wpa2wpa3 | wpa3
@@ -49,7 +49,8 @@ class APViewModel(application: Application) : AndroidViewModel(application) {
             channel = validChannelForBand(prefs.apBand, prefs.apChannel),
             width = prefs.apWidth,
             upstream = prefs.apUpstream,
-            gateway = prefs.apGateway,
+            // Normalize a legacy stored default to blank so it shows as a hint.
+            gateway = prefs.apGateway.takeUnless { it == DEFAULT_GATEWAY } ?: "",
             dnsServers = prefs.apDnsServers,
             hidden = prefs.apHidden,
             security = prefs.apSecurity,
@@ -211,7 +212,7 @@ class APViewModel(application: Application) : AndroidViewModel(application) {
                 cfg.ssid, cfg.password, cfg.upstream, cfg.band,
                 cfg.channel.takeIf { it.isNotBlank() },
                 cfg.width,
-                cfg.gateway, cfg.dnsServers.takeIf { it.isNotBlank() },
+                cfg.gateway.ifBlank { DEFAULT_GATEWAY }, cfg.dnsServers.takeIf { it.isNotBlank() },
                 cfg.hidden,
                 cfg.security, cfg.pmf,
                 if (cfg.containerMode) cfg.containerName else ""
@@ -249,6 +250,9 @@ class APViewModel(application: Application) : AndroidViewModel(application) {
     fun dismissActionLogs() { showActionLogs = false }
 
     companion object {
+        /** Default AP/LAN gateway when the gateway field is left blank. */
+        const val DEFAULT_GATEWAY = "192.168.42.1"
+
         // Must be companion (not instance method) — called from property initializer
         // before the instance exists.
         fun validChannelForBand(band: String, channel: String): String {
