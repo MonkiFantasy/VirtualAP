@@ -101,4 +101,8 @@
     <string name="dns_servers_desc">Custom upstream DNS servers (comma-separated). Leave blank for auto.</string>
     <string name="dns_servers_placeholder">e.g. 1.1.1.1, 8.8.8.8</string>
     <string name="dns_servers_error">Enter valid IPv4 addresses separated by commas</string>
+
+    <!-- Wi-Fi QR sheet -->
+    <string name="qr_title">Wi-Fi QR code</string>
+    <string name="qr_scan_hint">Scan with a phone camera to join</string>
 </resources>

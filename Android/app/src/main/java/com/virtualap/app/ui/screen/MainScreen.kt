@@ -1,6 +1,7 @@
 package com.virtualap.app.ui.screen
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.animation.AnimatedContent
 import kotlinx.coroutines.launch
@@ -47,6 +48,7 @@ import com.virtualap.app.ui.component.TerminalConsole
 import com.virtualap.app.ui.viewmodel.APConfig
 import com.virtualap.app.ui.viewmodel.APViewModel
 import com.virtualap.app.util.AnsiColorParser
+import com.virtualap.app.util.QrCodeGenerator
 
 private val ipv4Regex = Regex(
     "^(25[0-5]|2[0-4]\\d|[01]?\\d\\d?)" +
@@ -796,6 +798,7 @@ fun MainScreen(
 @Composable
 private fun ActiveNetworkCard(vm: APViewModel) {
     val status = vm.status
+    var showQr by remember { mutableStateOf(false) }
 
     val band = when (status.band) {
         "2", "2.4" -> "2.4 GHz"
@@ -834,16 +837,26 @@ private fun ActiveNetworkCard(vm: APViewModel) {
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
-                if (status.started != null) {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                    ) {
-                        Text(
-                            text = stringResource(R.string.since_time, status.started),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (status.started != null) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                        ) {
+                            Text(
+                                text = stringResource(R.string.since_time, status.started),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+                    IconButton(onClick = { showQr = true }, modifier = Modifier.size(36.dp)) {
+                        Icon(
+                            Icons.Default.QrCode2,
+                            contentDescription = stringResource(R.string.qr_title),
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(22.dp)
                         )
                     }
                 }
@@ -914,6 +927,61 @@ private fun ActiveNetworkCard(vm: APViewModel) {
                     }
                 }
             }
+        }
+    }
+
+    if (showQr) {
+        WifiQrSheet(vm = vm, onDismiss = { showQr = false })
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun WifiQrSheet(vm: APViewModel, onDismiss: () -> Unit) {
+    val ssid = vm.status.ssid ?: vm.config.ssid
+    // The password is still embedded in the QR (so scanning joins automatically);
+    // it's just not shown on screen.
+    val payload = remember(ssid, vm.config.password, vm.config.security, vm.config.hidden) {
+        QrCodeGenerator.wifiPayload(ssid, vm.config.password, vm.config.security, vm.config.hidden)
+    }
+    val qr = remember(payload) { QrCodeGenerator.encode(payload, 600) }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                stringResource(R.string.qr_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                stringResource(R.string.qr_scan_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(16.dp))
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = androidx.compose.ui.graphics.Color.White,
+                modifier = Modifier.size(240.dp)
+            ) {
+                Image(
+                    bitmap = qr,
+                    contentDescription = null,
+                    modifier = Modifier.padding(12.dp).fillMaxSize()
+                )
+            }
+            Spacer(Modifier.height(20.dp))
+            Text(ssid, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         }
     }
 }
