@@ -657,7 +657,7 @@ start_services() {
         IFS=","
         for dns in $DNS_SERVERS; do
             local clean_dns
-            clean_dns=$($ECHO "$dns" | $TR -d '[:space:]')
+            clean_dns=$("$BB" echo "$dns" | "$BB" tr -d '[:space:]')
             if [ -n "$clean_dns" ]; then
                 dns_config="$dns_config
 server=$clean_dns"
